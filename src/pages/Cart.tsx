@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { useCart } from "@/hooks/use-cart";
 import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/convex/_generated/api";
@@ -7,15 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  ArrowLeft,
-  Trash2,
-  Flame,
-  CreditCard,
-  Banknote,
-  Loader2,
-  Check,
-  Minus,
-  Plus,
+  ArrowLeft, Trash2, Flame, CreditCard, Banknote,
+  Loader2, Check, Minus, Plus,
 } from "lucide-react";
 import { useSearchParams, useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -31,71 +25,43 @@ export default function CartPage() {
   const [isConfirmed, setIsConfirmed] = useState(false);
 
   const placeOrder = useMutation(api.orders.placeOrder);
-
-  // Resolve table
   const tables = useQuery(api.tables.getTables);
-  const resolvedTable = tableId
-    ? tables?.find((t) => t._id === tableId)
-    : null;
+  const resolvedTable = tableId ? tables?.find((t) => t._id === tableId) : null;
 
   const handlePlaceOrder = async () => {
-    if (!user?._id || !resolvedTable) {
-      toast.error("Please ensure your table is selected");
-      return;
-    }
-    if (items.length === 0) {
-      toast.error("Your cart is empty");
-      return;
-    }
-
+    if (!user?._id || !resolvedTable) { toast.error("Please ensure your table is selected"); return; }
+    if (items.length === 0) { toast.error("Your cart is empty"); return; }
     setIsPlacing(true);
     try {
       const result = await placeOrder({
         tableId: resolvedTable._id,
         items: items.map((item) => ({
-          type: item.type,
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price,
-          customPizzaData: item.customPizzaData,
+          type: item.type, name: item.name, quantity: item.quantity,
+          price: item.price, customPizzaData: item.customPizzaData,
           menuItemId: item.menuItemId as any,
         })),
         paymentMethod,
       });
-
       clearCart();
       setIsConfirmed(true);
       toast.success(`Order #${result.orderNumber} placed!`);
-
-      setTimeout(() => {
-        navigate(`/order/${result.orderId}`);
-      }, 2000);
+      setTimeout(() => navigate(`/order/${result.orderId}`), 2000);
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to place order",
-      );
-    } finally {
-      setIsPlacing(false);
-    }
+      toast.error(error instanceof Error ? error.message : "Failed to place order");
+    } finally { setIsPlacing(false); }
   };
 
   if (isConfirmed) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", bounce: 0.5 }}
-          >
+          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", bounce: 0.5 }}>
             <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
               <Check className="h-10 w-10 text-green-600" />
             </div>
           </motion.div>
-          <h2 className="text-2xl font-bold mb-2">Order Placed! 🎉</h2>
-          <p className="text-muted-foreground">
-            Your pizza is being prepared. Redirecting to order tracker...
-          </p>
+          <h2 className="text-2xl font-bold mb-2">Order Placed!</h2>
+          <p className="text-muted-foreground">Your pizza is being prepared. Redirecting to tracker...</p>
         </div>
       </div>
     );
@@ -103,7 +69,6 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      {/* Header */}
       <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b">
         <div className="mx-auto max-w-4xl px-4 py-3 flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
@@ -118,20 +83,16 @@ export default function CartPage() {
           )}
         </div>
       </header>
-
       <div className="mx-auto max-w-4xl px-4 py-6">
         {items.length === 0 ? (
           <div className="text-center py-16">
             <span className="text-6xl block mb-4">🛒</span>
             <h2 className="text-xl font-bold mb-2">Cart is Empty</h2>
-            <p className="text-muted-foreground mb-4">
-              Add some delicious items to get started
-            </p>
+            <p className="text-muted-foreground mb-4">Add some delicious items to get started</p>
             <Button onClick={() => navigate(-1)}>Browse Menu</Button>
           </div>
         ) : (
           <>
-            {/* Cart Items */}
             <div className="space-y-3 mb-6">
               {items.map((item) => (
                 <Card key={item.id} className="border-border/50">
@@ -139,54 +100,28 @@ export default function CartPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-lg">
-                            {item.type === "custom_pizza" ? "🍕" : "🍽️"}
-                          </span>
+                          <span className="text-lg">{item.type === "custom_pizza" ? "🍕" : "🍽️"}</span>
                           <h3 className="font-bold text-sm">{item.name}</h3>
                         </div>
                         {item.customPizzaData && (
                           <p className="text-xs text-muted-foreground mt-1 ml-7">
-                            {item.customPizzaData.base} +{" "}
-                            {item.customPizzaData.sauce} +{" "}
-                            {item.customPizzaData.cheese}
-                            {item.customPizzaData.toppings.length > 0 &&
-                              ` + ${item.customPizzaData.toppings.map((t) => t.name).join(", ")}`}
+                            {item.customPizzaData.base} + {item.customPizzaData.sauce} + {item.customPizzaData.cheese}
+                            {item.customPizzaData.toppings.length > 0 && ` + ${item.customPizzaData.toppings.map((t) => t.name).join(", ")}`}
                           </p>
                         )}
                         <div className="flex items-center gap-2 mt-2 ml-7">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            onClick={() =>
-                              updateQuantity(item.id, item.quantity - 1)
-                            }
-                          >
+                          <Button variant="outline" size="sm" className="h-6 w-6 p-0" onClick={() => updateQuantity(item.id, item.quantity - 1)}>
                             <Minus className="h-3 w-3" />
                           </Button>
-                          <span className="text-sm font-medium w-6 text-center">
-                            {item.quantity}
-                          </span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            onClick={() =>
-                              updateQuantity(item.id, item.quantity + 1)
-                            }
-                          >
+                          <span className="text-sm font-medium w-6 text-center">{item.quantity}</span>
+                          <Button variant="outline" size="sm" className="h-6 w-6 p-0" onClick={() => updateQuantity(item.id, item.quantity + 1)}>
                             <Plus className="h-3 w-3" />
                           </Button>
                         </div>
                       </div>
                       <div className="text-right shrink-0">
                         <p className="font-bold">₹{item.price * item.quantity}</p>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 text-destructive mt-1"
-                          onClick={() => removeItem(item.id)}
-                        >
+                        <Button variant="ghost" size="sm" className="h-6 text-destructive mt-1" onClick={() => removeItem(item.id)}>
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
@@ -195,96 +130,42 @@ export default function CartPage() {
                 </Card>
               ))}
             </div>
-
-            {/* Payment Method */}
             <Card className="mb-6 border-border/50">
               <CardContent className="p-4">
                 <p className="font-bold text-sm mb-3">Payment Method</p>
                 <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => setPaymentMethod("upi")}
-                    className={`p-3 rounded-xl border-2 transition-all flex items-center gap-2 ${
-                      paymentMethod === "upi"
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/30"
-                    }`}
-                  >
+                  <button onClick={() => setPaymentMethod("upi")} className={`p-3 rounded-xl border-2 transition-all flex items-center gap-2 ${paymentMethod === "upi" ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"}`}>
                     <CreditCard className="h-4 w-4" />
-                    <div className="text-left">
-                      <p className="font-medium text-sm">UPI / Online</p>
-                      <p className="text-xs text-muted-foreground">
-                        Pay now
-                      </p>
-                    </div>
+                    <div className="text-left"><p className="font-medium text-sm">UPI / Online</p><p className="text-xs text-muted-foreground">Pay now</p></div>
                   </button>
-                  <button
-                    onClick={() => setPaymentMethod("cash")}
-                    className={`p-3 rounded-xl border-2 transition-all flex items-center gap-2 ${
-                      paymentMethod === "cash"
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/30"
-                    }`}
-                  >
+                  <button onClick={() => setPaymentMethod("cash")} className={`p-3 rounded-xl border-2 transition-all flex items-center gap-2 ${paymentMethod === "cash" ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"}`}>
                     <Banknote className="h-4 w-4" />
-                    <div className="text-left">
-                      <p className="font-medium text-sm">Cash</p>
-                      <p className="text-xs text-muted-foreground">
-                        Pay at table
-                      </p>
-                    </div>
+                    <div className="text-left"><p className="font-medium text-sm">Cash</p><p className="text-xs text-muted-foreground">Pay at table</p></div>
                   </button>
                 </div>
               </CardContent>
             </Card>
-
-            {/* Order Summary */}
             <Card className="mb-6 border-border/50">
               <CardContent className="p-4 space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal ({items.length} items)</span>
-                  <span>₹{total}</span>
+                  <span className="text-muted-foreground">Subtotal ({items.length} items)</span><span>₹{total}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">GST (5%)</span>
-                  <span>₹{Math.round(total * 0.05)}</span>
+                  <span className="text-muted-foreground">GST (5%)</span><span>₹{Math.round(total * 0.05)}</span>
                 </div>
                 <div className="flex justify-between items-center pt-2 border-t">
                   <span className="font-bold text-lg">Total</span>
-                  <span className="font-bold text-xl text-primary">
-                    ₹{total + Math.round(total * 0.05)}
-                  </span>
+                  <span className="font-bold text-xl text-primary">₹{total + Math.round(total * 0.05)}</span>
                 </div>
               </CardContent>
             </Card>
-
-            {/* Place Order */}
-            <Button
-              onClick={handlePlaceOrder}
-              disabled={isPlacing || !resolvedTable}
-              className="w-full fire-gradient text-white shadow-lg h-12 text-base"
-              size="lg"
-            >
-              {isPlacing ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Placing Order...
-                </>
-              ) : (
-                <>
-                  Place Order — ₹{total + Math.round(total * 0.05)}
-                </>
-              )}
+            <Button onClick={handlePlaceOrder} disabled={isPlacing || !resolvedTable} className="w-full fire-gradient text-white shadow-lg h-12 text-base" size="lg">
+              {isPlacing ? (<><Loader2 className="mr-2 h-5 w-5 animate-spin" />Placing Order...</>) : (<>Place Order — ₹{total + Math.round(total * 0.05)}</>)}
             </Button>
-            {!resolvedTable && (
-              <p className="text-center text-xs text-destructive mt-2">
-                Please scan a table QR code to place an order
-              </p>
-            )}
+            {!resolvedTable && <p className="text-center text-xs text-destructive mt-2">Please scan a table QR code to place an order</p>}
           </>
         )}
       </div>
     </div>
   );
 }
-
-import { motion } from "framer-motion";

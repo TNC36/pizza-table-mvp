@@ -2,6 +2,15 @@ import { authTables } from "@convex-dev/auth/server";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+const ROLES = {
+  ADMIN: "admin",
+  USER: "user",
+} as const;
+const roleValidator = v.union(
+  v.literal(ROLES.ADMIN),
+  v.literal(ROLES.USER),
+);
+
 const schema = defineSchema(
   {
     ...authTables,
@@ -16,6 +25,7 @@ const schema = defineSchema(
       pointsBalance: v.optional(v.number()),
       visitCount: v.optional(v.number()),
       totalSpent: v.optional(v.number()),
+      role: v.optional(roleValidator),
     }).index("email", ["email"])
       .index("by_phone", ["phone"]),
 

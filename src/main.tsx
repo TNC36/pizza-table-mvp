@@ -7,12 +7,22 @@ import { ConvexReactClient } from "convex/react";
 import React, { StrictMode, useEffect, lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router";
+import { CartProvider } from "@/hooks/use-cart";
 import "./index.css";
 
 // Lazy load route components for better code splitting
 const Landing = lazy(() => import("./pages/Landing.tsx"));
 const AuthPage = lazy(() => import("./pages/Auth.tsx"));
-const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
+const HomePage = lazy(() => import("./pages/Home.tsx"));
+const PizzaBuilder = lazy(() => import("./pages/PizzaBuilder.tsx"));
+const MenuPage = lazy(() => import("./pages/Menu.tsx"));
+const CartPage = lazy(() => import("./pages/Cart.tsx"));
+const OrderTracker = lazy(() => import("./pages/OrderTracker.tsx"));
+const ReorderPage = lazy(() => import("./pages/Reorder.tsx"));
+const LoyaltyPage = lazy(() => import("./pages/Loyalty.tsx"));
+const HallOfFamePage = lazy(() => import("./pages/HallOfFame.tsx"));
+const AdminPage = lazy(() => import("./pages/Admin.tsx"));
+const KitchenPage = lazy(() => import("./pages/Kitchen.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 // Simple loading fallback for route transitions
@@ -82,8 +92,6 @@ class RootErrorBoundary extends React.Component<
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 
-
-
 function RouteSyncer() {
   const location = useLocation();
   useEffect(() => {
@@ -107,7 +115,6 @@ function RouteSyncer() {
   return null;
 }
 
-
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <RootErrorBoundary>
@@ -115,28 +122,94 @@ createRoot(document.getElementById("root")!).render(
         <VlyToolbar />
       </ToolbarErrorBoundary>
       <ConvexAuthProvider client={convex}>
-        <BrowserRouter>
-          <RouteSyncer />
-          <Suspense fallback={<RouteLoading />}>
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route
-                path="/auth"
-                element={<AuthPage redirectAfterAuth="/dashboard" />}
-              />
-              <Route
-                path="/dashboard"
-                element={
-                  <RequireAuth>
-                    <Dashboard />
-                  </RequireAuth>
-                }
-              />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
-        <Toaster />
+        <CartProvider>
+          <BrowserRouter>
+            <RouteSyncer />
+            <Suspense fallback={<RouteLoading />}>
+              <Routes>
+                {/* Public */}
+                <Route path="/" element={<Landing />} />
+                <Route
+                  path="/auth"
+                  element={<AuthPage redirectAfterAuth="/home" />}
+                />
+                <Route path="/hall-of-fame" element={<HallOfFamePage />} />
+
+                {/* Customer - Protected */}
+                <Route
+                  path="/home"
+                  element={
+                    <RequireAuth>
+                      <HomePage />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/pizza-builder"
+                  element={
+                    <RequireAuth>
+                      <PizzaBuilder />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/menu"
+                  element={
+                    <RequireAuth>
+                      <MenuPage />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/cart"
+                  element={
+                    <RequireAuth>
+                      <CartPage />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/order/:orderId"
+                  element={
+                    <RequireAuth>
+                      <OrderTracker />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/reorder"
+                  element={
+                    <RequireAuth>
+                      <ReorderPage />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/loyalty"
+                  element={
+                    <RequireAuth>
+                      <LoyaltyPage />
+                    </RequireAuth>
+                  }
+                />
+
+                {/* Admin & Kitchen */}
+                <Route
+                  path="/admin"
+                  element={
+                    <RequireAuth>
+                      <AdminPage />
+                    </RequireAuth>
+                  }
+                />
+                <Route path="/kitchen" element={<KitchenPage />} />
+
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+          <Toaster />
+        </CartProvider>
       </ConvexAuthProvider>
     </RootErrorBoundary>
   </StrictMode>,
