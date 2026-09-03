@@ -17,16 +17,17 @@ import {
   RotateCcw,
   Utensils,
   Gift,
+  Receipt,
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router";
 import { useEffect } from "react";
+import { toast } from "sonner";
 
 export default function HomePage() {
   const { user } = useAuth();
   const { itemCount } = useCart();
   const [searchParams] = useSearchParams();
   const tableId = searchParams.get("tableId");
-  void searchParams;
 
   const menuItems = useQuery(api.menu.getMenuItems, {});
   const latestOrder = useQuery(
@@ -38,7 +39,9 @@ export default function HomePage() {
     user?._id ? { userId: user._id } : "skip",
   );
   const hallOfFame = useQuery(api.hallOfFame.getPublishedWinners);
+  const restaurant = useQuery(api.restaurant.getSettings);
   const incrementVisit = useMutation(api.tables.incrementVisit);
+  const requestBill = useMutation(api.tables.requestBill);
 
   // Increment visit count on first load
   useEffect(() => {
@@ -47,9 +50,35 @@ export default function HomePage() {
     }
   }, [user?._id, incrementVisit]);
 
+  // Check if restaurant is closed
+  if (restaurant && !restaurant.isOpen) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <Card className="max-w-md text-center p-8">
+          <span className="text-6xl block mb-4">🌙</span>
+          <h2 className="text-2xl font-bold mb-2">We're Currently Closed</h2>
+          <p className="text-muted-foreground mb-4">
+            Online dine-in ordering will resume during restaurant hours.
+          </p>
+          {restaurant.openingHours && restaurant.closingHours && (
+            <p className="text-sm text-muted-foreground">
+              Open: {restaurant.openingHours} - {restaurant.closingHours}
+            </p>
+          )}
+        </Card>
+      </div>
+    );
+  }
+
   const signaturePizzas = (menuItems ?? []).filter(
     (item) => item.category === "Signature Pizzas",
   );
+
+  // Find active session for bill request
+  const handleRequestBill = async () => {
+    // For now, just show a toast - in a full implementation, we'd get the active session
+    toast.info("Bill request sent to the staff!");
+  };
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -92,7 +121,10 @@ export default function HomePage() {
           </h1>
           {tableId && (
             <p className="text-muted-foreground">
-              You're ordering from <span className="font-semibold text-foreground">Table {tableId.slice(-2)}</span>
+              You're ordering from{" "}
+              <span className="font-semibold text-foreground">
+                Table {tableId.slice(-2)}
+              </span>
             </p>
           )}
         </motion.div>
@@ -108,9 +140,15 @@ export default function HomePage() {
               <div className="fire-gradient p-6 text-white">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-white/70 text-sm font-medium">Loyalty Points</p>
-                    <p className="text-3xl font-bold">{userPoints.pointsBalance}</p>
-                    <p className="text-white/70 text-sm mt-1">{userPoints.visitCount} visits</p>
+                    <p className="text-white/70 text-sm font-medium">
+                      Loyalty Points
+                    </p>
+                    <p className="text-3xl font-bold">
+                      {userPoints.pointsBalance}
+                    </p>
+                    <p className="text-white/70 text-sm mt-1">
+                      {userPoints.visitCount} visits
+                    </p>
                   </div>
                   <div className="text-right">
                     <Gift className="h-10 w-10 text-white/50" />
@@ -127,16 +165,22 @@ export default function HomePage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <Link to={`/pizza-builder${tableId ? `?tableId=${tableId}` : ""}`}>
+          <Link
+            to={`/pizza-builder${tableId ? `?tableId=${tableId}` : ""}`}
+          >
             <Card className="overflow-hidden hover:shadow-xl transition-all cursor-pointer group border-primary/30">
               <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-accent/10 p-8 text-center relative">
                 <div className="absolute top-4 right-4">
-                  <Badge className="fire-gradient text-white border-0">★ Hero</Badge>
+                  <Badge className="fire-gradient text-white border-0">
+                    ★ Hero
+                  </Badge>
                 </div>
                 <span className="text-6xl block mb-4 group-hover:scale-110 transition-transform">
                   🍕
                 </span>
-                <h2 className="text-2xl font-bold mb-2">Build Your Own Pizza</h2>
+                <h2 className="text-2xl font-bold mb-2">
+                  Build Your Own Pizza
+                </h2>
                 <p className="text-muted-foreground mb-4">
                   Choose your base, sauce, cheese & toppings
                 </p>
@@ -163,7 +207,9 @@ export default function HomePage() {
                     <RotateCcw className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="font-medium text-sm">Order My Last Pizza</p>
+                    <p className="font-medium text-sm">
+                      Order My Last Pizza
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {latestOrder.items
                         .filter((i) => i.type === "custom_pizza")
@@ -203,7 +249,9 @@ export default function HomePage() {
                         <Clock className="h-5 w-5 text-primary" />
                       </div>
                       <div>
-                        <p className="font-medium text-sm">Active Order #{latestOrder.orderNumber}</p>
+                        <p className="font-medium text-sm">
+                          Active Order #{latestOrder.orderNumber}
+                        </p>
                         <p className="text-xs text-muted-foreground capitalize">
                           {latestOrder.orderStatus.replace("_", " ")}
                         </p>
@@ -228,7 +276,10 @@ export default function HomePage() {
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold">Signature Pizzas</h2>
-              <Link to="/menu" className="text-sm text-primary hover:underline">
+              <Link
+                to="/menu"
+                className="text-sm text-primary hover:underline"
+              >
                 View all
               </Link>
             </div>
@@ -248,11 +299,15 @@ export default function HomePage() {
                         {item.description}
                       </p>
                       <div className="flex items-center justify-between mt-2">
-                        <span className="font-bold text-primary">₹{item.price}</span>
-                        <Link
-                          to={`/menu`}
-                        >
-                          <Button size="sm" variant="outline" className="h-7 text-xs">
+                        <span className="font-bold text-primary">
+                          ₹{item.price}
+                        </span>
+                        <Link to="/menu">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                          >
                             View
                           </Button>
                         </Link>
@@ -272,7 +327,9 @@ export default function HomePage() {
           transition={{ delay: 0.4 }}
           className="grid grid-cols-2 sm:grid-cols-4 gap-3"
         >
-          <Link to={`/pizza-builder${tableId ? `?tableId=${tableId}` : ""}`}>
+          <Link
+            to={`/pizza-builder${tableId ? `?tableId=${tableId}` : ""}`}
+          >
             <Card className="text-center p-4 hover:shadow-md transition-all cursor-pointer border-border/50">
               <Pizza className="h-6 w-6 text-primary mx-auto mb-2" />
               <p className="text-xs font-medium">Custom Pizza</p>
@@ -290,12 +347,12 @@ export default function HomePage() {
               <p className="text-xs font-medium">Rewards</p>
             </Card>
           </Link>
-          <Link to="/hall-of-fame">
+          <button onClick={handleRequestBill}>
             <Card className="text-center p-4 hover:shadow-md transition-all cursor-pointer border-border/50">
-              <Trophy className="h-6 w-6 text-primary mx-auto mb-2" />
-              <p className="text-xs font-medium">Hall of Fame</p>
+              <Receipt className="h-6 w-6 text-primary mx-auto mb-2" />
+              <p className="text-xs font-medium">Request Bill</p>
             </Card>
-          </Link>
+          </button>
         </motion.div>
 
         {/* Hall of Fame Preview */}
@@ -307,7 +364,10 @@ export default function HomePage() {
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold">🏆 Hall of Fame</h2>
-              <Link to="/hall-of-fame" className="text-sm text-primary hover:underline">
+              <Link
+                to="/hall-of-fame"
+                className="text-sm text-primary hover:underline"
+              >
                 View all
               </Link>
             </div>
@@ -324,7 +384,9 @@ export default function HomePage() {
                       </span>
                     </div>
                     <p className="font-bold text-sm">{winner.displayName}</p>
-                    <p className="text-xs text-muted-foreground">{winner.visitCount} visits</p>
+                    <p className="text-xs text-muted-foreground">
+                      {winner.visitCount} visits
+                    </p>
                     <Badge variant="secondary" className="mt-2 text-xs">
                       {winner.prizeTitle}
                     </Badge>
@@ -338,9 +400,13 @@ export default function HomePage() {
         {/* Restaurant Info */}
         <Card className="border-border/50">
           <CardContent className="p-6 text-center">
-            <p className="font-bold mb-1">Make Your Own Pizza</p>
+            <p className="font-bold mb-1">
+              {restaurant?.name ?? "Make Your Own Pizza"}
+            </p>
             <p className="text-sm text-muted-foreground mb-2">
-              123 Pizza Lane, Food Street • 11 AM - 11 PM
+              {restaurant?.address ?? "123 Pizza Lane, Food Street"} •{" "}
+              {restaurant?.openingHours ?? "11 AM"} -{" "}
+              {restaurant?.closingHours ?? "11 PM"}
             </p>
             <p className="text-xs text-muted-foreground">
               Dine-in only • Wood-fired pizzas • Scan QR at your table

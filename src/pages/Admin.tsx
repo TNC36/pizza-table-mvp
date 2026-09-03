@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -48,6 +49,9 @@ import {
   Edit,
   Check,
   Clock,
+  Settings,
+  Shield,
+  FileText,
 } from "lucide-react";
 import {
   BarChart,
@@ -65,6 +69,7 @@ import {
 } from "recharts";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
+import type { Id } from "@/convex/_generated/dataModel";
 
 // Helper to format currency
 function formatRupees(amount: number) {
@@ -111,7 +116,7 @@ export default function AdminPage() {
   const seedData = useMutation(api.seed.seedAll);
   const [seeding, setSeeding] = useState(false);
 
-  // Check if user is admin
+  // Check if user is admin - server-side enforced on all mutations
   const isAdmin = user?.role === "admin";
 
   if (user === undefined) {
@@ -122,16 +127,19 @@ export default function AdminPage() {
     );
   }
 
-  if (!isAdmin) {
+  if (!user || !isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Card className="max-w-md text-center p-8">
           <span className="text-4xl block mb-4">🔒</span>
           <h2 className="text-xl font-bold mb-2">Admin Access Required</h2>
           <p className="text-muted-foreground mb-4">
-            You don't have admin privileges. Contact the restaurant owner.
+            You don't have admin privileges. Contact the restaurant owner to get admin access.
           </p>
-          <Button onClick={() => navigate("/")}>Go Home</Button>
+          <div className="flex gap-2 justify-center">
+            <Button onClick={() => navigate("/admin/login")}>Admin Login</Button>
+            <Button variant="outline" onClick={() => navigate("/")}>Go Home</Button>
+          </div>
         </Card>
       </div>
     );
@@ -181,7 +189,7 @@ export default function AdminPage() {
       {/* Tabs */}
       <div className="max-w-7xl mx-auto px-4 pt-4">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-9 h-auto">
+          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-11 h-auto">
             <TabsTrigger value="dashboard" className="text-xs">
               <LayoutDashboard className="h-3 w-3 mr-1 hidden sm:block" />
               Dashboard
@@ -218,6 +226,14 @@ export default function AdminPage() {
               <BarChart3 className="h-3 w-3 mr-1 hidden sm:block" />
               Analytics
             </TabsTrigger>
+            <TabsTrigger value="settings" className="text-xs">
+              <Settings className="h-3 w-3 mr-1 hidden sm:block" />
+              Settings
+            </TabsTrigger>
+            <TabsTrigger value="audit" className="text-xs">
+              <FileText className="h-3 w-3 mr-1 hidden sm:block" />
+              Audit
+            </TabsTrigger>
           </TabsList>
 
           <div className="py-6">
@@ -248,6 +264,12 @@ export default function AdminPage() {
             <TabsContent value="analytics">
               <AnalyticsTab />
             </TabsContent>
+            <TabsContent value="settings">
+              <SettingsTab />
+            </TabsContent>
+            <TabsContent value="audit">
+              <AuditTab />
+            </TabsContent>
           </div>
         </Tabs>
       </div>
@@ -259,6 +281,7 @@ export default function AdminPage() {
 function DashboardTab() {
   const stats = useQuery(api.analytics.getSalesStats);
   const popular = useQuery(api.analytics.getPopularItems);
+  const restaurant = useQuery(api.restaurant.getSettings);
 
   if (!stats) {
     return (
@@ -272,6 +295,23 @@ function DashboardTab() {
 
   return (
     <div className="space-y-6">
+      {/* Restaurant Open/Closed Status */}
+      {restaurant && (
+        <Card className={`border-2 ${restaurant.isOpen ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}>
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-3 h-3 rounded-full ${restaurant.isOpen ? "bg-green-500 animate-pulse" : "bg-red-500"}`} />
+              <div>
+                <p className="font-bold">{restaurant.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  {restaurant.isOpen ? "Open for orders" : "Currently closed"}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           title="Today's Sales"
@@ -464,6 +504,11 @@ function OrdersTab() {
                     </p>
                   ))}
                 </div>
+                {order.notes && (
+                  <p className="text-xs text-muted-foreground italic mb-2">
+                    📝 {order.notes}
+                  </p>
+                )}
                 <div className="flex items-center justify-between">
                   <span className="font-bold">{formatRupees(order.totalAmount)}</span>
                   <div className="flex gap-2">
@@ -546,6 +591,7 @@ function OrdersTab() {
                             updateStatus({
                               orderId: order._id,
                               status: "cancelled",
+                              cancelReason: "Admin cancelled",
                             })
                           }
                         >
@@ -590,8 +636,7 @@ function MenuTab() {
     }
     try {
       if (editingId) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await updateItem({ id: editingId as any, ...form });
+        await updateItem({ id: editingId as Id<"menuItems">, ...form });
         toast.success("Menu item updated");
       } else {
         await createItem(form);
@@ -605,8 +650,7 @@ function MenuTab() {
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const startEdit = (item: any) => {
+  const startEdit = (item: { _id: string; name: string; description?: string; category: string; price: number; available: boolean }) => {
     setForm({
       name: item.name,
       description: item.description ?? "",
@@ -712,16 +756,13 @@ function PizzaConfigTab() {
   const [newPrice, setNewPrice] = useState(0);
   const [newCategory, setNewCategory] = useState("veg");
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const renderSection = (
     title: string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    items: any[] | undefined,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    createFn: (args: any) => void,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    updateFn: (args: any) => void,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    deleteFn: (args: any) => void,
+    items: { _id: string; name: string; price: number; available: boolean; stockQuantity?: number; category?: string }[] | undefined,
+    createFn: (args: any) => any,
+    updateFn: (args: any) => any,
+    deleteFn: (args: any) => any,
     showCategory = false,
   ) => (
     <Card className="border-border/50">
@@ -935,6 +976,7 @@ function InventoryTab() {
           <TableHeader>
             <TableRow>
               <TableHead>Ingredient</TableHead>
+              <TableHead>Category</TableHead>
               <TableHead>Stock</TableHead>
               <TableHead>Low Threshold</TableHead>
               <TableHead>Status</TableHead>
@@ -944,13 +986,13 @@ function InventoryTab() {
           <TableBody>
             {allToppings === undefined ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center">
+                <TableCell colSpan={6} className="text-center">
                   <Loader2 className="h-4 w-4 animate-spin inline" />
                 </TableCell>
               </TableRow>
             ) : allToppings.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   No ingredients yet
                 </TableCell>
               </TableRow>
@@ -961,6 +1003,11 @@ function InventoryTab() {
                   className={!topping.available ? "opacity-50" : ""}
                 >
                   <TableCell className="font-medium">{topping.name}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="text-xs">
+                      {topping.category ?? "—"}
+                    </Badge>
+                  </TableCell>
                   <TableCell>{topping.stockQuantity}</TableCell>
                   <TableCell>{topping.lowStockThreshold}</TableCell>
                   <TableCell>
@@ -1132,38 +1179,9 @@ function FameTab() {
   const updateWinner = useMutation(api.hallOfFame.updateWinner);
   const deleteWinner = useMutation(api.hallOfFame.deleteWinner);
 
-  const [name, setName] = useState("");
-  const [visits, setVisits] = useState(0);
-  const [prize, setPrize] = useState("");
-  const [month, setMonth] = useState("");
-
-  const handleAdd = async () => {
-    if (!name || !prize || !month) return;
-    // We need a real user ID - for now we'll create a placeholder
-    toast.success("Winner added (requires a real user ID)");
-    setName("");
-    setVisits(0);
-    setPrize("");
-    setMonth("");
-  };
-
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-bold">Hall of Fame Management</h2>
-
-      <Card className="border-border/50">
-        <CardContent className="p-4 space-y-3">
-          <div className="grid grid-cols-4 gap-2">
-            <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
-            <Input type="number" placeholder="Visits" value={visits || ""} onChange={(e) => setVisits(Number(e.target.value))} />
-            <Input placeholder="Prize" value={prize} onChange={(e) => setPrize(e.target.value)} />
-            <Input placeholder="Month (e.g. Aug 2026)" value={month} onChange={(e) => setMonth(e.target.value)} />
-          </div>
-          <Button onClick={handleAdd} size="sm">
-            <Plus className="h-3 w-3 mr-1" /> Add Winner
-          </Button>
-        </CardContent>
-      </Card>
 
       <div className="space-y-2">
         {winners === undefined ? (
@@ -1209,7 +1227,6 @@ function AnalyticsTab() {
     <div className="space-y-6">
       <h2 className="text-xl font-bold">Analytics</h2>
 
-      {/* Peak Hours */}
       {peakHours && (
         <Card className="border-border/50">
           <CardHeader>
@@ -1233,7 +1250,6 @@ function AnalyticsTab() {
         </Card>
       )}
 
-      {/* Daily Sales */}
       {dailySales && (
         <Card className="border-border/50">
           <CardHeader>
@@ -1257,7 +1273,6 @@ function AnalyticsTab() {
         </Card>
       )}
 
-      {/* Day of Week */}
       {dayOfWeek && (
         <Card className="border-border/50">
           <CardHeader>
@@ -1277,7 +1292,6 @@ function AnalyticsTab() {
         </Card>
       )}
 
-      {/* Payment Methods */}
       {paymentStats && paymentStats.length > 0 && (
         <Card className="border-border/50">
           <CardHeader>
@@ -1306,7 +1320,6 @@ function AnalyticsTab() {
         </Card>
       )}
 
-      {/* Popular Toppings */}
       {popular && popular.toppings.length > 0 && (
         <Card className="border-border/50">
           <CardHeader>
@@ -1325,6 +1338,177 @@ function AnalyticsTab() {
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+// ===================== RESTAURANT SETTINGS TAB =====================
+function SettingsTab() {
+  const restaurant = useQuery(api.restaurant.getSettings);
+  const updateSettings = useMutation(api.restaurant.updateSettings);
+  const toggleOpen = useMutation(api.restaurant.toggleOpen);
+  const users = useQuery(api.admin.getAllUsers);
+  const promoteUser = useMutation(api.admin.promoteUser);
+
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [email, setEmail] = useState("");
+  const [openingHours, setOpeningHours] = useState("");
+  const [closingHours, setClosingHours] = useState("");
+  const [gstPercent, setGstPercent] = useState(5);
+  const [initialized, setInitialized] = useState(false);
+
+  // Initialize form with existing data
+  if (restaurant && !initialized) {
+    setName(restaurant.name ?? "");
+    setPhone(restaurant.phone ?? "");
+    setAddress(restaurant.address ?? "");
+    setEmail(restaurant.email ?? "");
+    setOpeningHours(restaurant.openingHours ?? "");
+    setClosingHours(restaurant.closingHours ?? "");
+    setGstPercent(restaurant.gstPercent ?? 5);
+    setInitialized(true);
+  }
+
+  const handleSave = async () => {
+    await updateSettings({ name, phone, address, email, openingHours, closingHours, gstPercent });
+    toast.success("Settings saved");
+  };
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-xl font-bold">Restaurant Settings</h2>
+
+      {/* Open/Closed Toggle */}
+      <Card className="border-border/50">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-4 h-4 rounded-full ${restaurant?.isOpen ? "bg-green-500" : "bg-red-500"}`} />
+              <div>
+                <p className="font-bold">Restaurant Status</p>
+                <p className="text-sm text-muted-foreground">
+                  {restaurant?.isOpen ? "Open for orders" : "Currently closed"}
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={restaurant?.isOpen ?? true}
+              onCheckedChange={(checked) => toggleOpen({ isOpen: checked })}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Restaurant Info */}
+      <Card className="border-border/50">
+        <CardHeader>
+          <CardTitle className="text-sm">Restaurant Information</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Input placeholder="Restaurant Name" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input placeholder="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <Input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <Input placeholder="Address" value={address} onChange={(e) => setAddress(e.target.value)} />
+          <div className="grid grid-cols-2 gap-3">
+            <Input placeholder="Opening Hours (e.g. 11:00 AM)" value={openingHours} onChange={(e) => setOpeningHours(e.target.value)} />
+            <Input placeholder="Closing Hours (e.g. 11:00 PM)" value={closingHours} onChange={(e) => setClosingHours(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground">GST %</label>
+            <Input type="number" value={gstPercent} onChange={(e) => setGstPercent(Number(e.target.value))} />
+          </div>
+          <Button onClick={handleSave}>Save Settings</Button>
+        </CardContent>
+      </Card>
+
+      {/* User Management */}
+      <Card className="border-border/50">
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            User Management
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {users === undefined ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <div className="space-y-2">
+              {users.map((u) => (
+                <div key={u._id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                  <div>
+                    <p className="font-medium text-sm">{u.name ?? "Unnamed"}</p>
+                    <p className="text-xs text-muted-foreground">{u.email ?? u.phone ?? "No contact"}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={u.role === "admin" ? "default" : "secondary"}>
+                      {u.role ?? "user"}
+                    </Badge>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={() =>
+                        promoteUser({
+                          userId: u._id,
+                          role: u.role === "admin" ? "user" : "admin",
+                        })
+                      }
+                    >
+                      {u.role === "admin" ? "Remove Admin" : "Make Admin"}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ===================== AUDIT LOG TAB =====================
+function AuditTab() {
+  const logs = useQuery(api.admin.getAuditLogs);
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-xl font-bold">Admin Audit Log</h2>
+
+      <Card className="border-border/50">
+        <CardContent>
+          {logs === undefined ? (
+            <div className="py-4 text-center">
+              <Loader2 className="h-4 w-4 animate-spin inline" />
+            </div>
+          ) : logs.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">No audit logs yet</p>
+          ) : (
+            <div className="space-y-2">
+              {logs.map((log) => (
+                <div key={log._id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 text-sm">
+                  <FileText className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium">{log.action.replace("_", " ")}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {log.entityType} {log.entityId ? `(${log.entityId})` : ""}
+                    </p>
+                    {log.details && (
+                      <p className="text-xs text-muted-foreground mt-0.5">{log.details}</p>
+                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {new Date(log.createdAt).toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

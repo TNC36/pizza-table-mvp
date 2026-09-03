@@ -90,7 +90,7 @@ export default function Landing() {
                   Sign In
                 </Button>
               </Link>
-              <Link to="/admin">
+              <Link to="/admin/login">
                 <Button variant="outline" size="sm">
                   Admin
                 </Button>

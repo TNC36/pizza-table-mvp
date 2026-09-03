@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { requireAdmin } from "./helpers";
 
 export const getMenuItems = query({
   args: { category: v.optional(v.string()) },
@@ -34,9 +35,11 @@ export const createMenuItem = mutation({
     image: v.optional(v.string()),
     available: v.boolean(),
     ingredients: v.optional(v.array(v.string())),
+    allergens: v.optional(v.array(v.string())),
     sortOrder: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     return await ctx.db.insert("menuItems", {
       ...args,
       sortOrder: args.sortOrder ?? 0,
@@ -54,8 +57,10 @@ export const updateMenuItem = mutation({
     image: v.optional(v.string()),
     available: v.optional(v.boolean()),
     ingredients: v.optional(v.array(v.string())),
+    allergens: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const { id, ...updates } = args;
     const filtered = Object.fromEntries(
       Object.entries(updates).filter(([, v]) => v !== undefined),
@@ -67,6 +72,7 @@ export const updateMenuItem = mutation({
 export const deleteMenuItem = mutation({
   args: { id: v.id("menuItems") },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     await ctx.db.delete(args.id);
   },
 });

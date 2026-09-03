@@ -1,11 +1,13 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { requireAdmin } from "./helpers";
 
 // === BASES ===
 export const getBases = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("pizzaBases")
+    return await ctx.db
+      .query("pizzaBases")
       .filter((q) => q.eq(q.field("available"), true))
       .collect();
   },
@@ -27,6 +29,7 @@ export const createBase = mutation({
     sortOrder: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     return await ctx.db.insert("pizzaBases", {
       ...args,
       sortOrder: args.sortOrder ?? 0,
@@ -44,6 +47,7 @@ export const updateBase = mutation({
     sortOrder: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const { id, ...updates } = args;
     const filtered = Object.fromEntries(
       Object.entries(updates).filter(([, v]) => v !== undefined),
@@ -55,6 +59,7 @@ export const updateBase = mutation({
 export const deleteBase = mutation({
   args: { id: v.id("pizzaBases") },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     await ctx.db.delete(args.id);
   },
 });
@@ -63,7 +68,8 @@ export const deleteBase = mutation({
 export const getSauces = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("sauces")
+    return await ctx.db
+      .query("sauces")
       .filter((q) => q.eq(q.field("available"), true))
       .collect();
   },
@@ -85,6 +91,7 @@ export const createSauce = mutation({
     sortOrder: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     return await ctx.db.insert("sauces", {
       ...args,
       sortOrder: args.sortOrder ?? 0,
@@ -101,6 +108,7 @@ export const updateSauce = mutation({
     available: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const { id, ...updates } = args;
     const filtered = Object.fromEntries(
       Object.entries(updates).filter(([, v]) => v !== undefined),
@@ -112,6 +120,7 @@ export const updateSauce = mutation({
 export const deleteSauce = mutation({
   args: { id: v.id("sauces") },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     await ctx.db.delete(args.id);
   },
 });
@@ -120,7 +129,8 @@ export const deleteSauce = mutation({
 export const getCheeses = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("cheeses")
+    return await ctx.db
+      .query("cheeses")
       .filter((q) => q.eq(q.field("available"), true))
       .collect();
   },
@@ -142,6 +152,7 @@ export const createCheese = mutation({
     sortOrder: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     return await ctx.db.insert("cheeses", {
       ...args,
       sortOrder: args.sortOrder ?? 0,
@@ -158,6 +169,7 @@ export const updateCheese = mutation({
     available: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const { id, ...updates } = args;
     const filtered = Object.fromEntries(
       Object.entries(updates).filter(([, v]) => v !== undefined),
@@ -169,6 +181,7 @@ export const updateCheese = mutation({
 export const deleteCheese = mutation({
   args: { id: v.id("cheeses") },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     await ctx.db.delete(args.id);
   },
 });
@@ -177,7 +190,8 @@ export const deleteCheese = mutation({
 export const getToppings = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("toppings")
+    return await ctx.db
+      .query("toppings")
       .filter((q) => q.eq(q.field("available"), true))
       .collect();
   },
@@ -196,12 +210,14 @@ export const createTopping = mutation({
     description: v.optional(v.string()),
     price: v.number(),
     category: v.optional(v.string()),
+    allergens: v.optional(v.array(v.string())),
     stockQuantity: v.number(),
     lowStockThreshold: v.number(),
     available: v.boolean(),
     sortOrder: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     return await ctx.db.insert("toppings", {
       ...args,
       sortOrder: args.sortOrder ?? 0,
@@ -216,11 +232,13 @@ export const updateTopping = mutation({
     description: v.optional(v.string()),
     price: v.optional(v.number()),
     category: v.optional(v.string()),
+    allergens: v.optional(v.array(v.string())),
     stockQuantity: v.optional(v.number()),
     lowStockThreshold: v.optional(v.number()),
     available: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const { id, ...updates } = args;
     const filtered: Record<string, unknown> = Object.fromEntries(
       Object.entries(updates).filter(([, v]) => v !== undefined),
@@ -236,6 +254,7 @@ export const updateTopping = mutation({
 export const deleteTopping = mutation({
   args: { id: v.id("toppings") },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     await ctx.db.delete(args.id);
   },
 });

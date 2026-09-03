@@ -7,8 +7,9 @@ import { useMutation, useQuery } from "convex/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
-  ArrowLeft, Trash2, Flame, CreditCard, Banknote,
+  ArrowLeft, Trash2, Flame, Banknote,
   Loader2, Check, Minus, Plus,
 } from "lucide-react";
 import { useSearchParams, useNavigate } from "react-router";
@@ -21,27 +22,42 @@ export default function CartPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { items, removeItem, updateQuantity, clearCart, total } = useCart();
-  const [paymentMethod, setPaymentMethod] = useState<"upi" | "cash">("upi");
   const [isPlacing, setIsPlacing] = useState(false);
   const [isConfirmed, setIsConfirmed] = useState(false);
+  const [notes, setNotes] = useState("");
 
   const placeOrder = useMutation(api.orders.placeOrder);
   const tables = useQuery(api.tables.getTables);
+  const restaurant = useQuery(api.restaurant.getSettings);
   const resolvedTable = tableId ? tables?.find((t) => t._id === tableId) : null;
 
+  const gstPercent = restaurant?.gstPercent ?? 5;
+  const gstAmount = Math.round(total * gstPercent / 100);
+  const grandTotal = total + gstAmount;
+
   const handlePlaceOrder = async () => {
-    if (!user?._id || !resolvedTable) { toast.error("Please ensure your table is selected"); return; }
-    if (items.length === 0) { toast.error("Your cart is empty"); return; }
+    if (!user?._id || !resolvedTable) {
+      toast.error("Please ensure your table is selected");
+      return;
+    }
+    if (items.length === 0) {
+      toast.error("Your cart is empty");
+      return;
+    }
     setIsPlacing(true);
     try {
       const result = await placeOrder({
         tableId: resolvedTable._id,
         items: items.map((item) => ({
-          type: item.type, name: item.name, quantity: item.quantity,
-          price: item.price, customPizzaData: item.customPizzaData,
+          type: item.type,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          customPizzaData: item.customPizzaData,
           menuItemId: item.menuItemId as unknown as Id<"menuItems"> | undefined,
         })),
-        paymentMethod,
+        paymentMethod: "cash",
+        notes: notes || undefined,
       });
       clearCart();
       setIsConfirmed(true);
@@ -49,7 +65,9 @@ export default function CartPage() {
       setTimeout(() => navigate(`/order/${result.orderId}`), 2000);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to place order");
-    } finally { setIsPlacing(false); }
+    } finally {
+      setIsPlacing(false);
+    }
   };
 
   if (isConfirmed) {
@@ -131,39 +149,71 @@ export default function CartPage() {
                 </Card>
               ))}
             </div>
+
+            {/* Order Notes */}
             <Card className="mb-6 border-border/50">
               <CardContent className="p-4">
-                <p className="font-bold text-sm mb-3">Payment Method</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <button onClick={() => setPaymentMethod("upi")} className={`p-3 rounded-xl border-2 transition-all flex items-center gap-2 ${paymentMethod === "upi" ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"}`}>
-                    <CreditCard className="h-4 w-4" />
-                    <div className="text-left"><p className="font-medium text-sm">UPI / Online</p><p className="text-xs text-muted-foreground">Pay now</p></div>
-                  </button>
-                  <button onClick={() => setPaymentMethod("cash")} className={`p-3 rounded-xl border-2 transition-all flex items-center gap-2 ${paymentMethod === "cash" ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"}`}>
-                    <Banknote className="h-4 w-4" />
-                    <div className="text-left"><p className="font-medium text-sm">Cash</p><p className="text-xs text-muted-foreground">Pay at table</p></div>
-                  </button>
+                <p className="font-bold text-sm mb-2">Order Notes (Optional)</p>
+                <Textarea
+                  placeholder="e.g. Less spicy, Extra crispy, No onions..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="text-sm"
+                  rows={2}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Payment - Cash Only (Dine-in) */}
+            <Card className="mb-6 border-border/50">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Banknote className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Pay at Table</p>
+                    <p className="text-xs text-muted-foreground">Cash payment collected at your table</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Order Summary */}
             <Card className="mb-6 border-border/50">
               <CardContent className="p-4 space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal ({items.length} items)</span><span>₹{total}</span>
+                  <span className="text-muted-foreground">Subtotal ({items.length} items)</span>
+                  <span>₹{total}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">GST (5%)</span><span>₹{Math.round(total * 0.05)}</span>
+                  <span className="text-muted-foreground">GST ({gstPercent}%)</span>
+                  <span>₹{gstAmount}</span>
                 </div>
                 <div className="flex justify-between items-center pt-2 border-t">
                   <span className="font-bold text-lg">Total</span>
-                  <span className="font-bold text-xl text-primary">₹{total + Math.round(total * 0.05)}</span>
+                  <span className="font-bold text-xl text-primary">₹{grandTotal}</span>
                 </div>
               </CardContent>
             </Card>
-            <Button onClick={handlePlaceOrder} disabled={isPlacing || !resolvedTable} className="w-full fire-gradient text-white shadow-lg h-12 text-base" size="lg">
-              {isPlacing ? (<><Loader2 className="mr-2 h-5 w-5 animate-spin" />Placing Order...</>) : (<>Place Order — ₹{total + Math.round(total * 0.05)}</>)}
+
+            <Button
+              onClick={handlePlaceOrder}
+              disabled={isPlacing || !resolvedTable}
+              className="w-full fire-gradient text-white shadow-lg h-12 text-base"
+              size="lg"
+            >
+              {isPlacing ? (
+                <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Placing Order...</>
+              ) : (
+                <>Place Order — ₹{grandTotal}</>
+              )}
             </Button>
-            {!resolvedTable && <p className="text-center text-xs text-destructive mt-2">Please scan a table QR code to place an order</p>}
+            {!resolvedTable && (
+              <p className="text-center text-xs text-destructive mt-2">
+                Please scan a table QR code to place an order
+              </p>
+            )}
           </>
         )}
       </div>

@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { requireAdmin } from "./helpers";
 
 export const getPublishedWinners = query({
   args: {},
@@ -28,6 +29,7 @@ export const addWinner = mutation({
     published: v.boolean(),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     return await ctx.db.insert("hallOfFame", args);
   },
 });
@@ -42,6 +44,7 @@ export const updateWinner = mutation({
     published: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const { id, ...updates } = args;
     const filtered = Object.fromEntries(
       Object.entries(updates).filter(([, v]) => v !== undefined),
@@ -53,6 +56,7 @@ export const updateWinner = mutation({
 export const deleteWinner = mutation({
   args: { id: v.id("hallOfFame") },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     await ctx.db.delete(args.id);
   },
 });

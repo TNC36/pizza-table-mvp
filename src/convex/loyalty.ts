@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { requireAdmin } from "./helpers";
 
 export const getLoyaltyRules = query({
   args: {},
@@ -17,6 +18,7 @@ export const updateLoyaltyRules = mutation({
     customPizzaBonus: v.number(),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const rules = await ctx.db.query("loyaltyRules").take(1);
     if (rules.length > 0) {
       await ctx.db.patch(rules[0]._id, args);
@@ -51,6 +53,7 @@ export const createReward = mutation({
     active: v.boolean(),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     return await ctx.db.insert("loyaltyRewards", args);
   },
 });
@@ -64,6 +67,7 @@ export const updateReward = mutation({
     active: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const { id, ...updates } = args;
     const filtered = Object.fromEntries(
       Object.entries(updates).filter(([, v]) => v !== undefined),
@@ -75,6 +79,7 @@ export const updateReward = mutation({
 export const deleteReward = mutation({
   args: { id: v.id("loyaltyRewards") },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     await ctx.db.delete(args.id);
   },
 });

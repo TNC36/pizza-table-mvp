@@ -134,6 +134,10 @@ createRoot(document.getElementById("root")!).render(
                   element={<AuthPage redirectAfterAuth="/home" />}
                 />
                 <Route path="/hall-of-fame" element={<HallOfFamePage />} />
+                <Route
+                  path="/admin/login"
+                  element={<AuthPage redirectAfterAuth="/admin" />}
+                />
 
                 {/* Customer - Protected */}
                 <Route

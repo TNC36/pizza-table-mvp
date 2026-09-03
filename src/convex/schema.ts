@@ -11,6 +11,24 @@ const roleValidator = v.union(
   v.literal(ROLES.USER),
 );
 
+const orderStatusValidator = v.union(
+  v.literal("placed"),
+  v.literal("confirmed"),
+  v.literal("preparing"),
+  v.literal("in_oven"),
+  v.literal("ready"),
+  v.literal("completed"),
+  v.literal("cancelled"),
+);
+
+const paymentStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("paid"),
+  v.literal("failed"),
+  v.literal("cash_pending"),
+  v.literal("cash_collected"),
+);
+
 const schema = defineSchema(
   {
     ...authTables,
@@ -26,7 +44,8 @@ const schema = defineSchema(
       visitCount: v.optional(v.number()),
       totalSpent: v.optional(v.number()),
       role: v.optional(roleValidator),
-    }).index("email", ["email"])
+    })
+      .index("email", ["email"])
       .index("by_phone", ["phone"]),
 
     pizzaBases: defineTable({
@@ -58,6 +77,7 @@ const schema = defineSchema(
       description: v.optional(v.string()),
       price: v.number(),
       category: v.optional(v.string()),
+      allergens: v.optional(v.array(v.string())),
       stockQuantity: v.number(),
       lowStockThreshold: v.number(),
       available: v.boolean(),
@@ -72,6 +92,7 @@ const schema = defineSchema(
       image: v.optional(v.string()),
       available: v.boolean(),
       ingredients: v.optional(v.array(v.string())),
+      allergens: v.optional(v.array(v.string())),
       sortOrder: v.optional(v.number()),
     }).index("by_category", ["category"]),
 
@@ -81,52 +102,68 @@ const schema = defineSchema(
       active: v.boolean(),
     }).index("by_qr", ["qrIdentifier"]),
 
+    tableSessions: defineTable({
+      tableId: v.id("tables"),
+      sessionNumber: v.string(),
+      startedAt: v.number(),
+      endedAt: v.optional(v.number()),
+      active: v.boolean(),
+      billRequested: v.boolean(),
+      billRequestedAt: v.optional(v.number()),
+    })
+      .index("by_table", ["tableId"])
+      .index("by_active", ["active"]),
+
     orders: defineTable({
       orderNumber: v.number(),
       userId: v.id("users"),
       tableId: v.id("tables"),
-      items: v.array(v.object({
-        type: v.union(v.literal("custom_pizza"), v.literal("menu_item")),
-        name: v.string(),
-        quantity: v.number(),
-        price: v.number(),
-        customPizzaData: v.optional(v.object({
-          base: v.string(),
-          basePrice: v.number(),
-          sauce: v.string(),
-          saucePrice: v.number(),
-          cheese: v.string(),
-          cheesePrice: v.number(),
-          toppings: v.array(v.object({
-            name: v.string(),
-            price: v.number(),
-          })),
-        })),
-        menuItemId: v.optional(v.id("menuItems")),
-      })),
+      tableSessionId: v.optional(v.id("tableSessions")),
+      items: v.array(
+        v.object({
+          type: v.union(
+            v.literal("custom_pizza"),
+            v.literal("menu_item"),
+          ),
+          name: v.string(),
+          quantity: v.number(),
+          price: v.number(),
+          customPizzaData: v.optional(
+            v.object({
+              base: v.string(),
+              basePrice: v.number(),
+              sauce: v.string(),
+              saucePrice: v.number(),
+              cheese: v.string(),
+              cheesePrice: v.number(),
+              toppings: v.array(
+                v.object({ name: v.string(), price: v.number() }),
+              ),
+            }),
+          ),
+          menuItemId: v.optional(v.id("menuItems")),
+        }),
+      ),
       totalAmount: v.number(),
       paymentMethod: v.optional(v.string()),
-      paymentStatus: v.union(
-        v.literal("pending"),
-        v.literal("paid"),
-        v.literal("failed"),
-        v.literal("cash_pending"),
-        v.literal("cash_collected"),
-      ),
-      orderStatus: v.union(
-        v.literal("placed"),
-        v.literal("confirmed"),
-        v.literal("preparing"),
-        v.literal("in_oven"),
-        v.literal("ready"),
-        v.literal("completed"),
-        v.literal("cancelled"),
-      ),
+      paymentStatus: paymentStatusValidator,
+      orderStatus: orderStatusValidator,
+      notes: v.optional(v.string()),
       createdAt: v.number(),
-    }).index("by_user", ["userId"])
+      placedAt: v.optional(v.number()),
+      confirmedAt: v.optional(v.number()),
+      preparingAt: v.optional(v.number()),
+      inOvenAt: v.optional(v.number()),
+      readyAt: v.optional(v.number()),
+      completedAt: v.optional(v.number()),
+      cancelledAt: v.optional(v.number()),
+      cancelReason: v.optional(v.string()),
+    })
+      .index("by_user", ["userId"])
       .index("by_table", ["tableId"])
       .index("by_status", ["orderStatus"])
-      .index("by_created", ["createdAt"]),
+      .index("by_created", ["createdAt"])
+      .index("by_session", ["tableSessionId"]),
 
     loyaltyRewards: defineTable({
       title: v.string(),
@@ -162,6 +199,32 @@ const schema = defineSchema(
       perRupeePoints: v.number(),
       customPizzaBonus: v.number(),
     }),
+
+    restaurantSettings: defineTable({
+      name: v.string(),
+      tagline: v.optional(v.string()),
+      phone: v.optional(v.string()),
+      address: v.optional(v.string()),
+      email: v.optional(v.string()),
+      openingHours: v.optional(v.string()),
+      closingHours: v.optional(v.string()),
+      isOpen: v.boolean(),
+      logo: v.optional(v.string()),
+      gstPercent: v.number(),
+    }),
+
+    adminAuditLogs: defineTable({
+      adminUserId: v.id("users"),
+      action: v.string(),
+      entityType: v.string(),
+      entityId: v.optional(v.string()),
+      details: v.optional(v.string()),
+      oldValues: v.optional(v.string()),
+      newValues: v.optional(v.string()),
+      createdAt: v.number(),
+    })
+      .index("by_admin", ["adminUserId"])
+      .index("by_created", ["createdAt"]),
   },
   {
     schemaValidation: false,

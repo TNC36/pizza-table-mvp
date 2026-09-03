@@ -1,26 +1,38 @@
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 import { ArrowLeft, Flame, Check, Loader2 } from "lucide-react";
 import { useParams, useNavigate } from "react-router";
+import { useAuth } from "@/hooks/use-auth";
+import { toast } from "sonner";
 
 const STATUS_STEPS = [
-  { key: "placed", label: "Order Placed" },
-  { key: "confirmed", label: "Confirmed" },
-  { key: "preparing", label: "Preparing" },
-  { key: "in_oven", label: "In the Wood-Fired Oven" },
-  { key: "ready", label: "Ready!" },
+  { key: "placed", label: "Order Placed", icon: "📝" },
+  { key: "confirmed", label: "Confirmed", icon: "✅" },
+  { key: "preparing", label: "Preparing", icon: "👨‍🍳" },
+  { key: "in_oven", label: "In the Wood-Fired Oven", icon: "🔥" },
+  { key: "ready", label: "Ready!", icon: "🍕" },
 ];
 
-const STATUS_ORDER = ["placed", "confirmed", "preparing", "in_oven", "ready"];
+const STATUS_ORDER = ["placed", "confirmed", "preparing", "in_oven", "ready", "completed"];
 
 export default function OrderTracker() {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const cancelOrder = useMutation(api.orders.cancelOrder);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const order = useQuery(api.orders.getOrder, orderId ? { orderId: orderId as any } : "skip");
+  const tables = useQuery(api.tables.getTables);
+
+  const getTableNumber = (tableId: string) => {
+    const table = tables?.find((t) => t._id === tableId);
+    return table?.tableNumber ?? "?";
+  };
 
   if (order === undefined) {
     return (
@@ -39,6 +51,31 @@ export default function OrderTracker() {
   }
 
   const currentIdx = STATUS_ORDER.indexOf(order.orderStatus);
+  const canCancel = order.orderStatus === "placed" || order.orderStatus === "confirmed";
+
+  const handleCancel = async () => {
+    try {
+      await cancelOrder({
+        orderId: order._id,
+        reason: "Customer requested cancellation",
+      });
+      toast.success("Order cancelled");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to cancel");
+    }
+  };
+
+  const getStatusTimestamp = (status: string) => {
+    switch (status) {
+      case "placed": return order.placedAt;
+      case "confirmed": return order.confirmedAt;
+      case "preparing": return order.preparingAt;
+      case "in_oven": return order.inOvenAt;
+      case "ready": return order.readyAt;
+      case "completed": return order.completedAt;
+      default: return undefined;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -49,6 +86,9 @@ export default function OrderTracker() {
           </Button>
           <Flame className="h-5 w-5 text-primary" />
           <span className="font-bold">Order #{order.orderNumber}</span>
+          <Badge variant="secondary" className="ml-auto text-xs">
+            Table {getTableNumber(order.tableId)}
+          </Badge>
         </div>
       </header>
 
@@ -61,12 +101,23 @@ export default function OrderTracker() {
           </motion.div>
         )}
 
+        {order.orderStatus === "cancelled" && (
+          <div className="text-center py-6">
+            <span className="text-6xl block mb-3">❌</span>
+            <h2 className="text-2xl font-bold mb-1">Order Cancelled</h2>
+            {order.cancelReason && (
+              <p className="text-muted-foreground">Reason: {order.cancelReason}</p>
+            )}
+          </div>
+        )}
+
         <Card className="border-border/50 overflow-hidden">
           <CardContent className="p-6">
             <div className="space-y-0">
               {STATUS_STEPS.map((step, i) => {
                 const isCompleted = i < currentIdx;
-                const isCurrent = i === currentIdx;
+                const isCurrent = i === currentIdx && order.orderStatus !== "completed" && order.orderStatus !== "cancelled";
+                const timestamp = getStatusTimestamp(step.key);
                 return (
                   <div key={step.key} className="flex gap-4">
                     <div className="flex flex-col items-center">
@@ -78,13 +129,18 @@ export default function OrderTracker() {
                           isCompleted || isCurrent ? "bg-primary text-white" : "bg-muted text-muted-foreground"
                         } ${isCurrent ? "animate-pulse ring-4 ring-primary/20" : ""}`}
                       >
-                        {isCompleted ? <Check className="h-5 w-5" /> : <span className="text-xs font-bold">{i + 1}</span>}
+                        {isCompleted ? <Check className="h-5 w-5" /> : <span className="text-xs">{step.icon}</span>}
                       </motion.div>
                       {i < STATUS_STEPS.length - 1 && <div className={`w-0.5 h-8 ${isCompleted ? "bg-primary" : "bg-muted"}`} />}
                     </div>
                     <div className="pt-2 pb-2">
                       <p className={`font-medium ${isCompleted || isCurrent ? "text-foreground" : "text-muted-foreground"}`}>{step.label}</p>
                       {isCurrent && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs text-primary mt-0.5">In progress...</motion.p>}
+                      {timestamp && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {new Date(timestamp).toLocaleTimeString()}
+                        </p>
+                      )}
                     </div>
                   </div>
                 );
@@ -111,12 +167,28 @@ export default function OrderTracker() {
                 <span className="font-medium">₹{item.price * item.quantity}</span>
               </div>
             ))}
+            {order.notes && (
+              <div className="p-2 bg-muted/50 rounded text-xs text-muted-foreground">
+                📝 {order.notes}
+              </div>
+            )}
             <div className="border-t pt-3 flex justify-between font-bold">
               <span>Total</span>
               <span className="text-primary">₹{order.totalAmount}</span>
             </div>
           </CardContent>
         </Card>
+
+        {/* Cancel Button */}
+        {canCancel && user?._id === order.userId && (
+          <Button
+            variant="destructive"
+            className="w-full"
+            onClick={handleCancel}
+          >
+            Cancel Order
+          </Button>
+        )}
       </div>
     </div>
   );

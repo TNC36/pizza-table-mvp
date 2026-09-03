@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { requireAdmin, requireAuth } from "./helpers";
 
 export const getTables = query({
   args: {},
@@ -42,6 +43,7 @@ export const createTable = mutation({
     qrIdentifier: v.string(),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     return await ctx.db.insert("tables", {
       tableNumber: args.tableNumber,
       qrIdentifier: args.qrIdentifier,
@@ -58,6 +60,7 @@ export const updateTable = mutation({
     qrIdentifier: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const { id, ...updates } = args;
     const filtered = Object.fromEntries(
       Object.entries(updates).filter(([, v]) => v !== undefined),
@@ -69,6 +72,7 @@ export const updateTable = mutation({
 export const deleteTable = mutation({
   args: { id: v.id("tables") },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     await ctx.db.delete(args.id);
   },
 });
@@ -76,6 +80,7 @@ export const deleteTable = mutation({
 export const incrementVisit = mutation({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
+    // This is called from the customer home page on first load
     const user = await ctx.db.get(args.userId);
     if (!user) return;
     await ctx.db.patch(args.userId, {
@@ -101,5 +106,97 @@ export const getActiveOrderForTable = query({
       .order("desc")
       .take(1);
     return orders[0] ?? null;
+  },
+});
+
+// === TABLE SESSIONS ===
+
+export const getOrCreateTableSession = mutation({
+  args: { tableId: v.id("tables") },
+  handler: async (ctx, args) => {
+    const { user } = await requireAuth(ctx);
+    if (!user) throw new Error("User not found");
+
+    const table = await ctx.db.get(args.tableId);
+    if (!table || !table.active) {
+      throw new Error("Table is not available");
+    }
+
+    // Check for existing active session on this table
+    const existingSessions = await ctx.db
+      .query("tableSessions")
+      .withIndex("by_table", (q) => q.eq("tableId", args.tableId))
+      .filter((q) => q.eq(q.field("active"), true))
+      .take(1);
+
+    if (existingSessions.length > 0) {
+      return existingSessions[0]._id;
+    }
+
+    // Create new session
+    const sessionDate = new Date().toISOString().split("T")[0];
+    const sessionCount = await ctx.db
+      .query("tableSessions")
+      .withIndex("by_table", (q) => q.eq("tableId", args.tableId))
+      .collect();
+
+    const sessionId = await ctx.db.insert("tableSessions", {
+      tableId: args.tableId,
+      sessionNumber: `${sessionDate}-#${sessionCount.length + 1}`,
+      startedAt: Date.now(),
+      active: true,
+      billRequested: false,
+    });
+
+    return sessionId;
+  },
+});
+
+export const endTableSession = mutation({
+  args: { sessionId: v.id("tableSessions") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    await ctx.db.patch(args.sessionId, {
+      active: false,
+      endedAt: Date.now(),
+    });
+  },
+});
+
+export const requestBill = mutation({
+  args: { sessionId: v.id("tableSessions") },
+  handler: async (ctx, args) => {
+    const { user } = await requireAuth(ctx);
+    if (!user) throw new Error("User not found");
+
+    const session = await ctx.db.get(args.sessionId);
+    if (!session) throw new Error("Session not found");
+    if (!session.active) throw new Error("Session is no longer active");
+
+    await ctx.db.patch(args.sessionId, {
+      billRequested: true,
+      billRequestedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+export const getActiveSessionForTable = query({
+  args: { tableId: v.id("tables") },
+  handler: async (ctx, args) => {
+    const sessions = await ctx.db
+      .query("tableSessions")
+      .withIndex("by_table", (q) => q.eq("tableId", args.tableId))
+      .filter((q) => q.eq(q.field("active"), true))
+      .take(1);
+    return sessions[0] ?? null;
+  },
+});
+
+export const getTableSessions = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("tableSessions").order("desc").take(50);
   },
 });
