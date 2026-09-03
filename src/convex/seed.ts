@@ -3,6 +3,7 @@ import { mutation } from "./_generated/server";
 export const seedAll = mutation({
   args: {},
   handler: async (ctx) => {
+    // No auth required for seeding — allows first-time setup
     // Check if data already seeded
     const existingBases = await ctx.db.query("pizzaBases").take(1);
     if (existingBases.length > 0) return "Already seeded";

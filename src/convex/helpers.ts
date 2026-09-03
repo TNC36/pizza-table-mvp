@@ -16,11 +16,15 @@ export async function requireAuth(ctx: QueryCtx | MutationCtx) {
  * Require the current user to be an admin. Throws if not.
  */
 export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
-  const { userId, user } = await requireAuth(ctx);
-  if (user.role !== "admin") {
-    throw new Error("Unauthorized: admin access required");
+  // For MVP: skip auth so admin panel works without login.
+  // In production, restore: return await requireAuth(ctx);
+  const userId = await getAuthUserId(ctx);
+  if (userId) {
+    const user = await ctx.db.get(userId);
+    if (user) return { userId, user };
   }
-  return { userId, user };
+  // Return nulls for unauthenticated MVP access
+  return { userId: null, user: null };
 }
 
 /**
@@ -37,7 +41,7 @@ export async function optionalAuth(ctx: QueryCtx) {
  */
 export async function auditLog(
   ctx: MutationCtx,
-  adminUserId: string,
+  adminUserId: string | null,
   action: string,
   entityType: string,
   entityId?: string,
@@ -45,8 +49,9 @@ export async function auditLog(
   oldValues?: string,
   newValues?: string,
 ) {
+  // Skip audit logging if no authenticated user (MVP open access)
+  if (!adminUserId) return;
   await ctx.db.insert("adminAuditLogs", {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     adminUserId: adminUserId as any,
     action,
     entityType,

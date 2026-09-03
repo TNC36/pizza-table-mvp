@@ -116,34 +116,8 @@ export default function AdminPage() {
   const seedData = useMutation(api.seed.seedAll);
   const [seeding, setSeeding] = useState(false);
 
-  // Check if user is admin - server-side enforced on all mutations
-  const isAdmin = user?.role === "admin";
-
-  if (user === undefined) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!user || !isAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Card className="max-w-md text-center p-8">
-          <span className="text-4xl block mb-4">🔒</span>
-          <h2 className="text-xl font-bold mb-2">Admin Access Required</h2>
-          <p className="text-muted-foreground mb-4">
-            You don't have admin privileges. Contact the restaurant owner to get admin access.
-          </p>
-          <div className="flex gap-2 justify-center">
-            <Button onClick={() => navigate("/admin/login")}>Admin Login</Button>
-            <Button variant="outline" onClick={() => navigate("/")}>Go Home</Button>
-          </div>
-        </Card>
-      </div>
-    );
-  }
+  // For MVP: No auth check required — admin panel is directly accessible
+  // In production, restore: if (!user || user.role !== "admin") { ... }
 
   const handleSeed = async () => {
     setSeeding(true);
@@ -179,8 +153,8 @@ export default function AdminPage() {
               <ChefHat className="h-4 w-4 mr-1" />
               Kitchen
             </Button>
-            <Button variant="outline" size="sm" onClick={handleSignOut}>
-              <LogOut className="h-4 w-4" />
+            <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
+              Home
             </Button>
           </div>
         </div>

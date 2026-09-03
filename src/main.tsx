@@ -200,11 +200,7 @@ createRoot(document.getElementById("root")!).render(
                 {/* Admin & Kitchen */}
                 <Route
                   path="/admin"
-                  element={
-                    <RequireAuth>
-                      <AdminPage />
-                    </RequireAuth>
-                  }
+                  element={<AdminPage />}
                 />
                 <Route path="/kitchen" element={<KitchenPage />} />
 

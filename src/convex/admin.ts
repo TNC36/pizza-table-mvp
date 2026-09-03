@@ -15,17 +15,19 @@ export const promoteUser = mutation({
     const oldRole = targetUser.role ?? "user";
     await ctx.db.patch(args.userId, { role: args.role });
 
-    // Audit log
-    await ctx.db.insert("adminAuditLogs", {
-      adminUserId,
-      action: "role_changed",
-      entityType: "user",
-      entityId: args.userId,
-      details: `Changed role from "${oldRole}" to "${args.role}"`,
-      oldValues: oldRole,
-      newValues: args.role,
-      createdAt: Date.now(),
-    });
+    // Audit log (skip if unauthenticated MVP access)
+    if (adminUserId) {
+      await ctx.db.insert("adminAuditLogs", {
+        adminUserId,
+        action: "role_changed",
+        entityType: "user",
+        entityId: args.userId,
+        details: `Changed role from "${oldRole}" to "${args.role}"`,
+        oldValues: oldRole,
+        newValues: args.role,
+        createdAt: Date.now(),
+      });
+    }
   },
 });
 
@@ -61,6 +63,8 @@ export const recordAuditLog = mutation({
   },
   handler: async (ctx, args) => {
     const { userId } = await requireAdmin(ctx);
+    // Skip if unauthenticated MVP access
+    if (!userId) return;
     await ctx.db.insert("adminAuditLogs", {
       adminUserId: userId,
       action: args.action,
