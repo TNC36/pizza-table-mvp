@@ -153,8 +153,8 @@ export default function AdminPage() {
               <ChefHat className="h-4 w-4 mr-1" />
               Kitchen
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
-              Home
+            <Button variant="ghost" size="sm" onClick={() => navigate("/home")}>
+              Customer View
             </Button>
           </div>
         </div>

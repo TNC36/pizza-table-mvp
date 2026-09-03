@@ -12,6 +12,13 @@ import {
   ArrowLeft, Trash2, Flame, Banknote,
   Loader2, Check, Minus, Plus,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useSearchParams, useNavigate } from "react-router";
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -210,9 +217,33 @@ export default function CartPage() {
               )}
             </Button>
             {!resolvedTable && (
-              <p className="text-center text-xs text-destructive mt-2">
-                Please scan a table QR code to place an order
-              </p>
+              <div className="mt-4 space-y-3">
+                <p className="text-center text-sm text-destructive font-medium">
+                  Please select your table to place an order
+                </p>
+                {tables === undefined ? (
+                  <div className="h-10 bg-muted rounded animate-pulse" />
+                ) : (
+                  <Select onValueChange={(val) => {
+                    const params = new URLSearchParams(searchParams);
+                    params.set("tableId", val);
+                    navigate(`/cart?${params.toString()}`, { replace: true });
+                    const tbl = tables?.find((t) => t._id === val);
+                    toast.success(`Table ${tbl?.tableNumber ?? val} selected`);
+                  }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose your table..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tables.filter((t) => t.active).map((table) => (
+                        <SelectItem key={table._id} value={table._id}>
+                          Table {table.tableNumber}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
             )}
           </>
         )}

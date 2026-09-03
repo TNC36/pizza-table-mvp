@@ -19,15 +19,25 @@ import {
   Gift,
   Receipt,
 } from "lucide-react";
-import { Link, useSearchParams } from "react-router";
-import { useEffect } from "react";
+import { Link, useSearchParams, useNavigate } from "react-router";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function HomePage() {
   const { user } = useAuth();
   const { itemCount } = useCart();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const tableId = searchParams.get("tableId");
+  const [showTableSelect, setShowTableSelect] = useState(false);
+  const tables = useQuery(api.tables.getTables);
 
   const menuItems = useQuery(api.menu.getMenuItems, {});
   const latestOrder = useQuery(
@@ -76,8 +86,13 @@ export default function HomePage() {
 
   // Find active session for bill request
   const handleRequestBill = async () => {
-    // For now, just show a toast - in a full implementation, we'd get the active session
     toast.info("Bill request sent to the staff!");
+  };
+
+  const handleTableSelect = (tableIdValue: string) => {
+    setSearchParams({ tableId: tableIdValue });
+    setShowTableSelect(false);
+    toast.success(`Now ordering from Table ${tables?.find((t) => t._id === tableIdValue)?.tableNumber ?? tableIdValue}`);
   };
 
   return (
@@ -90,10 +105,15 @@ export default function HomePage() {
             <span className="font-bold text-lg">MYOP</span>
           </div>
           <div className="flex items-center gap-3">
-            {tableId && (
+            {tableId ? (
               <Badge variant="secondary" className="text-xs">
-                Table #{tableId.slice(-2)}
+                Table #{tables?.find((t) => t._id === tableId)?.tableNumber ?? "?"}
               </Badge>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => setShowTableSelect(true)}>
+                <Utensils className="h-3 w-3 mr-1" />
+                Select Table
+              </Button>
             )}
             <Link to="/cart" className="relative">
               <Button variant="outline" size="sm">
@@ -119,12 +139,16 @@ export default function HomePage() {
           <h1 className="text-2xl md:text-3xl font-bold mb-2">
             {user?.name ? `Welcome, ${user.name}!` : "Welcome!"}
           </h1>
-          {tableId && (
+          {tableId ? (
             <p className="text-muted-foreground">
               You're ordering from{" "}
               <span className="font-semibold text-foreground">
-                Table {tableId.slice(-2)}
+                Table {tables?.find((t) => t._id === tableId)?.tableNumber ?? "selected table"}
               </span>
+            </p>
+          ) : (
+            <p className="text-muted-foreground">
+              Select a table to start ordering
             </p>
           )}
         </motion.div>
@@ -409,11 +433,42 @@ export default function HomePage() {
               {restaurant?.closingHours ?? "11 PM"}
             </p>
             <p className="text-xs text-muted-foreground">
-              Dine-in only • Wood-fired pizzas • Scan QR at your table
+              Dine-in only • Wood-fired pizzas • Select your table to order
             </p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Table Selector Modal */}
+      {showTableSelect && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-background rounded-2xl w-full max-w-md p-6 space-y-4">
+            <div>
+              <h3 className="text-lg font-bold">Select Your Table</h3>
+              <p className="text-sm text-muted-foreground">Choose the table you're seated at</p>
+            </div>
+            {tables === undefined ? (
+              <div className="h-10 bg-muted rounded animate-pulse" />
+            ) : (
+              <Select onValueChange={handleTableSelect}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a table..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {tables.filter((t) => t.active).map((table) => (
+                    <SelectItem key={table._id} value={table._id}>
+                      Table {table.tableNumber}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <Button variant="outline" className="w-full" onClick={() => setShowTableSelect(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

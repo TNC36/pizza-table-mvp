@@ -133,7 +133,7 @@ export default function PizzaBuilder() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Link to="/cart" className="relative">
+            <Link to={`/cart${tableId ? `?tableId=${tableId}` : ""}`} className="relative">
               <Button variant="outline" size="sm">
                 <ShoppingCart className="h-4 w-4" />
               </Button>
