@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Flame, Gift, Star, Loader2, Check } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useState } from "react";
+import type { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
 
 export default function LoyaltyPage() {
@@ -29,7 +30,7 @@ export default function LoyaltyPage() {
   const handleRedeem = async (rewardId: string) => {
     setRedeeming(rewardId);
     try {
-      await redeemReward({ rewardId: rewardId as any });
+      await redeemReward({ rewardId: rewardId as unknown as Id<"loyaltyRewards"> });
       toast.success("Reward redeemed!");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to redeem");

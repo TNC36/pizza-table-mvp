@@ -7,6 +7,20 @@ import {
   Flame,
   Loader2,
 } from "lucide-react";
+interface OrderItem {
+  type: string;
+  name: string;
+  quantity: number;
+  price: number;
+  customPizzaData?: {
+    base: string;
+    sauce: string;
+    cheese: string;
+    toppings: { name: string; price: number }[];
+  };
+}
+
+type OrderStatus = "placed" | "confirmed" | "preparing" | "in_oven" | "ready" | "completed" | "cancelled";
 
 export default function KitchenPage() {
   const activeOrders = useQuery(api.orders.getActiveOrders);
@@ -62,7 +76,7 @@ export default function KitchenPage() {
 
         {/* Items */}
         <div className="space-y-1 mb-4">
-          {order.items.map((item: any, i: number) => (
+          {order.items.map((item: OrderItem, i: number) => (
             <div key={i} className="text-sm">
               <p className="font-medium">
                 {item.quantity}× {item.name}
@@ -72,7 +86,7 @@ export default function KitchenPage() {
                   <p>🔸 {item.customPizzaData.base} Base</p>
                   <p>🔸 {item.customPizzaData.sauce} Sauce</p>
                   <p>🔸 {item.customPizzaData.cheese} Cheese</p>
-                  {item.customPizzaData.toppings.map((t: any) => (
+                  {item.customPizzaData.toppings.map((t: { name: string; price: number }) => (
                     <p key={t.name}>🔸 {t.name}</p>
                   ))}
                 </div>
@@ -89,7 +103,7 @@ export default function KitchenPage() {
               onClick={() =>
                 updateStatus({
                   orderId: order._id,
-                  status: action.status as any,
+                  status: action.status as OrderStatus,
                 })
               }
               className={`flex-1 ${action.color} text-white`}

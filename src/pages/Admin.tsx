@@ -142,7 +142,7 @@ export default function AdminPage() {
     try {
       const result = await seedData({});
       toast.success(result || "Data seeded!");
-    } catch (err) {
+    } catch {
       toast.error("Failed to seed");
     }
     setSeeding(false);
@@ -590,6 +590,7 @@ function MenuTab() {
     }
     try {
       if (editingId) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await updateItem({ id: editingId as any, ...form });
         toast.success("Menu item updated");
       } else {
@@ -599,11 +600,12 @@ function MenuTab() {
       setShowForm(false);
       setEditingId(null);
       setForm({ name: "", description: "", category: "Signature Pizzas", price: 0, available: true });
-    } catch (error) {
+    } catch {
       toast.error("Failed to save");
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const startEdit = (item: any) => {
     setForm({
       name: item.name,
@@ -712,9 +714,13 @@ function PizzaConfigTab() {
 
   const renderSection = (
     title: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     items: any[] | undefined,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     createFn: (args: any) => void,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     updateFn: (args: any) => void,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     deleteFn: (args: any) => void,
     showCategory = false,
   ) => (
@@ -1016,7 +1022,6 @@ function LoyaltyTab() {
   const rewards = useQuery(api.loyalty.getAllRewards);
   const updateRules = useMutation(api.loyalty.updateLoyaltyRules);
   const createReward = useMutation(api.loyalty.createReward);
-  const updateReward = useMutation(api.loyalty.updateReward);
   const deleteReward = useMutation(api.loyalty.deleteReward);
 
   const [perVisit, setPerVisit] = useState(0);
@@ -1124,10 +1129,8 @@ function LoyaltyTab() {
 // ===================== FAME TAB =====================
 function FameTab() {
   const winners = useQuery(api.hallOfFame.getAllWinners);
-  const addWinner = useMutation(api.hallOfFame.addWinner);
   const updateWinner = useMutation(api.hallOfFame.updateWinner);
   const deleteWinner = useMutation(api.hallOfFame.deleteWinner);
-  const users = useQuery(api.users.currentUser);
 
   const [name, setName] = useState("");
   const [visits, setVisits] = useState(0);
@@ -1194,7 +1197,6 @@ function FameTab() {
 
 // ===================== ANALYTICS TAB =====================
 function AnalyticsTab() {
-  const stats = useQuery(api.analytics.getSalesStats);
   const peakHours = useQuery(api.analytics.getPeakHours);
   const popular = useQuery(api.analytics.getPopularItems);
   const dailySales = useQuery(api.analytics.getDailySales);

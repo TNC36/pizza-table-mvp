@@ -5,7 +5,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { useAuth } from "@/hooks/use-auth";
-import { Flame, ArrowRight, Loader2, Phone } from "lucide-react";
+import { Flame, ArrowRight, Loader2, Mail, Phone } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 
@@ -25,7 +25,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const redirect = resolveRedirectAfterAuth(returnTo, tableId ? `/home?tableId=${tableId}` : redirectAfterAuth);
 
   const [authStep, setAuthStep] = useState<"signIn" | "otp">("signIn");
-  const [phoneValue, setPhoneValue] = useState("");
+  const [emailValue, setEmailValue] = useState("");
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,22 +34,21 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     if (!authLoading && isAuthenticated) navigate(redirect);
   }, [authLoading, isAuthenticated, navigate, redirect]);
 
-  const handlePhoneSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleEmailSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsLoading(true);
     setError(null);
     try {
       const formData = new FormData(event.currentTarget);
-      const pv = formData.get("phone") as string;
-      const phoneAsEmail = `${pv.replace(/\D/g, "")}@phone.myopizza.com`;
+      const email = formData.get("email") as string;
       const authFormData = new FormData();
-      authFormData.set("email", phoneAsEmail);
+      authFormData.set("email", email);
       await signIn("email-otp", authFormData);
-      setPhoneValue(pv);
+      setEmailValue(email);
       setAuthStep("otp");
       setIsLoading(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send verification code.");
+      setError(err instanceof Error ? err.message : "Failed to send verification code. Please try again.");
       setIsLoading(false);
     }
   };
@@ -59,9 +58,8 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     setIsLoading(true);
     setError(null);
     try {
-      const phoneAsEmail = `${phoneValue.replace(/\D/g, "")}@phone.myopizza.com`;
       const formData = new FormData();
-      formData.set("email", phoneAsEmail);
+      formData.set("email", emailValue);
       formData.set("code", otp);
       await signIn("email-otp", formData);
       navigate(redirect);
@@ -91,37 +89,59 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                   </div>
                 </div>
                 <CardTitle className="text-xl">Welcome to MYOP</CardTitle>
-                <CardDescription>Enter your phone number to start ordering</CardDescription>
+                <CardDescription>
+                  Enter your email to receive a verification code
+                </CardDescription>
                 {tableId && (
                   <div className="mt-2 px-3 py-1.5 bg-primary/10 rounded-full text-sm font-medium text-primary inline-flex items-center gap-1 mx-auto">
                     🔥 Table will be auto-detected
                   </div>
                 )}
               </CardHeader>
-              <form onSubmit={handlePhoneSubmit}>
+              <form onSubmit={handleEmailSubmit}>
                 <CardContent>
                   <div className="relative flex items-center gap-2">
                     <div className="relative flex-1">
-                      <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input name="phone" placeholder="+91 98765 43210" type="tel" className="pl-9" disabled={isLoading} required />
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input name="email" placeholder="you@example.com" type="email" className="pl-9" disabled={isLoading} required />
                     </div>
                     <Button type="submit" variant="outline" size="icon" disabled={isLoading}>
                       {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
                     </Button>
                   </div>
                   {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+                  <div className="mt-4 space-y-2">
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-background px-2 text-muted-foreground">How it works</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Mail className="h-3 w-3 shrink-0" />
+                      <span>We'll send a 6-digit code to your email</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Phone className="h-3 w-3 shrink-0" />
+                      <span>Dine-in only — scan your table QR code to order</span>
+                    </div>
+                  </div>
                 </CardContent>
               </form>
             </>
           ) : (
             <>
               <CardHeader className="text-center pt-8">
-                <CardTitle>Check your phone</CardTitle>
-                <CardDescription>We sent a verification code to {phoneValue}</CardDescription>
+                <CardTitle>Check your email</CardTitle>
+                <CardDescription>
+                  We sent a 6-digit code to <span className="font-medium text-foreground">{emailValue}</span>
+                </CardDescription>
               </CardHeader>
               <form onSubmit={handleOtpSubmit}>
                 <CardContent className="pb-4">
-                  <input type="hidden" name="email" value={`${phoneValue.replace(/\D/g, "")}@phone.myopizza.com`} />
+                  <input type="hidden" name="email" value={emailValue} />
                   <input type="hidden" name="code" value={otp} />
                   <div className="flex justify-center">
                     <InputOTP value={otp} onChange={setOtp} maxLength={6} disabled={isLoading}
@@ -143,7 +163,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                   <p className="text-sm text-muted-foreground text-center mt-4">
                     Didn't receive a code?{" "}
                     <Button variant="link" className="p-0 h-auto" onClick={() => setAuthStep("signIn")}>
-                      Try again
+                      Try a different email
                     </Button>
                   </p>
                 </CardContent>
@@ -152,7 +172,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                     {isLoading ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying...</>) : (<>Verify & Start Ordering<ArrowRight className="ml-2 h-4 w-4" /></>)}
                   </Button>
                   <Button type="button" variant="ghost" onClick={() => setAuthStep("signIn")} disabled={isLoading} className="w-full">
-                    Use different phone number
+                    Use different email
                   </Button>
                 </CardFooter>
               </form>

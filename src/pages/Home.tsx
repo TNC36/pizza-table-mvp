@@ -18,15 +18,15 @@ import {
   Utensils,
   Gift,
 } from "lucide-react";
-import { Link, useSearchParams, useNavigate } from "react-router";
-import { useCallback, useEffect } from "react";
+import { Link, useSearchParams } from "react-router";
+import { useEffect } from "react";
 
 export default function HomePage() {
   const { user } = useAuth();
   const { itemCount } = useCart();
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const tableId = searchParams.get("tableId");
+  void searchParams;
 
   const menuItems = useQuery(api.menu.getMenuItems, {});
   const latestOrder = useQuery(
@@ -45,25 +45,10 @@ export default function HomePage() {
     if (user?._id) {
       incrementVisit({ userId: user._id });
     }
-  }, [user?._id]);
-
-  const featuredItems = (menuItems ?? [])
-    .filter((item) => item.category === "Signature Pizzas")
-    .slice(0, 4);
+  }, [user?._id, incrementVisit]);
 
   const signaturePizzas = (menuItems ?? []).filter(
     (item) => item.category === "Signature Pizzas",
-  );
-  const sides = (menuItems ?? []).filter((item) => item.category === "Sides");
-  const beverages = (menuItems ?? []).filter(
-    (item) => item.category === "Beverages",
-  );
-
-  const addToCart = useCallback(
-    (item: (typeof menuItems extends (infer T)[] | undefined ? T : never)) => {
-      // This is handled via CartContext - we need to expose it
-    },
-    [],
   );
 
   return (

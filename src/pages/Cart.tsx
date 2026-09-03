@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useSearchParams, useNavigate } from "react-router";
 import { toast } from "sonner";
+import type { Id } from "@/convex/_generated/dataModel";
 
 export default function CartPage() {
   const [searchParams] = useSearchParams();
@@ -38,7 +39,7 @@ export default function CartPage() {
         items: items.map((item) => ({
           type: item.type, name: item.name, quantity: item.quantity,
           price: item.price, customPizzaData: item.customPizzaData,
-          menuItemId: item.menuItemId as any,
+          menuItemId: item.menuItemId as unknown as Id<"menuItems"> | undefined,
         })),
         paymentMethod,
       });

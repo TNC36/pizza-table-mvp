@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useSearchParams, useNavigate } from "react-router";
 import { useState } from "react";
+import type { Id } from "@/convex/_generated/dataModel";
 
 export default function ReorderPage() {
   const [searchParams] = useSearchParams();
@@ -25,7 +26,7 @@ export default function ReorderPage() {
 
   const originalOrder = useQuery(
     api.orders.getOrder,
-    orderId ? { orderId: orderId as any } : "skip",
+    orderId ? { orderId: orderId as unknown as Id<"orders"> } : "skip",
   );
 
   // Get current ingredient availability
