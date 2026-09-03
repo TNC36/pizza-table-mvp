@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { api } from "@/convex/_generated/api";
 import { useQuery, useMutation } from "convex/react";
 import { useAuth } from "@/hooks/use-auth";
@@ -15,13 +15,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -48,16 +41,13 @@ import {
   EyeOff,
   Loader2,
   RefreshCw,
-  Download,
   Users,
   TrendingUp,
-  Clock,
   IndianRupee,
-  AlertTriangle,
   ChefHat,
   Edit,
   Check,
-  X,
+  Clock,
 } from "lucide-react";
 import {
   BarChart,
@@ -94,7 +84,7 @@ function KpiCard({
   title: string;
   value: string | number;
   subtitle?: string;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   color?: string;
 }) {
   return (
@@ -118,6 +108,8 @@ export default function AdminPage() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("dashboard");
+  const seedData = useMutation(api.seed.seedAll);
+  const [seeding, setSeeding] = useState(false);
 
   // Check if user is admin
   const isAdmin = user?.role === "admin";
@@ -145,15 +137,12 @@ export default function AdminPage() {
     );
   }
 
-  const seedData = useMutation(api.seed.seedAll);
-  const [seeding, setSeeding] = useState(false);
-
   const handleSeed = async () => {
     setSeeding(true);
     try {
       const result = await seedData({});
       toast.success(result || "Data seeded!");
-    } catch (e) {
+    } catch (err) {
       toast.error("Failed to seed");
     }
     setSeeding(false);

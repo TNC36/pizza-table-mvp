@@ -3,14 +3,8 @@ import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { motion } from "framer-motion";
 import {
   Flame,
-  Check,
-  ChefHat,
-  FlameKindling,
-  PartyPopper,
-  Clock,
   Loader2,
 } from "lucide-react";
 
@@ -46,6 +40,7 @@ export default function KitchenPage() {
     order,
     actions,
   }: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     order: any;
     actions: { label: string; status: string; color: string }[];
   }) => (
@@ -57,10 +52,7 @@ export default function KitchenPage() {
               #{order.orderNumber}
             </span>
             <Badge className="text-lg px-3 py-1">
-              Table {(() => {
-                const tables = activeOrders;
-                return "...";
-              })()}
+              Table ...
             </Badge>
           </div>
           <span className="text-sm text-muted-foreground">

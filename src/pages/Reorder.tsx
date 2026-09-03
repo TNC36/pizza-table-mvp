@@ -1,7 +1,6 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCart } from "@/hooks/use-cart";
-import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +21,6 @@ export default function ReorderPage() {
   const tableId = searchParams.get("tableId");
   const navigate = useNavigate();
   const { addItem } = useCart();
-  const { user } = useAuth();
   const [added, setAdded] = useState(false);
 
   const originalOrder = useQuery(
